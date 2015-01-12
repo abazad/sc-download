@@ -1,8 +1,9 @@
 import urllib
 import urllib2
 import json
-
+import string
 import soundcloud
+import simplejson
 
 #	CONSTANTS	#
 
@@ -22,21 +23,6 @@ class Sound(object):
 		self.user = user
 		self.URL = url
 		self.artworkURL = artworkURL
-
-
-
-
-
-
-#	MAIN 	#
-secrets = getSecrets()
-
-getSoundCloudData(secrets[0], secrets[1], secrets[2])
-DownloadLikeList()
-
-
-
-
 
 
 #	FUNCTIONS	#
@@ -125,7 +111,7 @@ def AskToDownload(title):
 
 def DownloadLikeList():
 	for like in likeList:
-		DownloadMP3FromURL(like.URL, like.title)
+		DownloadMP3FromURL(like.URL, cleanFileName(like.title))
 
 
 def DownloadMP3FromURL(url, name):
@@ -137,16 +123,28 @@ def DownloadMP3FromURL(url, name):
 
 	print("Preparing Stream...")
 
+	numTried = 0;
+	failed = True;
 	#Get JSON response from download URL
 	try:
-		response = urllib2.urlopen(downloadURL)
+		while(numTried < 5):
+			response = urllib2.urlopen(downloadURL)
+			if(response.info()["Content-Length"] != "0"):
+				failed = False;
+				print("Success")
+				break;
+			print("StreamPocket Failed, retrying...")
+			numTried += 1;
 	except Exception as e:
 		print(e)
+
+	if(failed):
+		print("StreamPocket Failed - Not Downloading")
 
 	print("Stream Ready")
 
 	#Parse JSON
-	j = json.loads(response.read())
+	j = simplejson.loads(response.read())
 	soundURL = j["recorded"]
 
 	#Open Sound from URL
@@ -167,3 +165,15 @@ def DownloadMP3FromURL(url, name):
 	songFile.close()
 
 	print("Download Complete\n")
+
+def cleanFileName(fileName):
+	valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+	newFileName = ''.join(c for c in fileName if c in valid_chars)
+	return newFileName
+
+
+#	MAIN 	#
+secrets = getSecrets()
+
+getSoundCloudData(secrets[0], secrets[1], secrets[2])
+DownloadLikeList()
