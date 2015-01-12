@@ -1,9 +1,14 @@
+from mutagen.easyid3 import EasyID3
+from mutagen.id3 import ID3, APIC, error
+from mutagen.mp3 import MP3
+import mutagen
 import urllib
 import urllib2
 import json
 import string
 import soundcloud
 import simplejson
+import os
 
 #	CONSTANTS	#
 
@@ -111,15 +116,23 @@ def AskToDownload(title):
 
 def DownloadLikeList():
 	for like in likeList:
-		DownloadMP3FromURL(like.URL, cleanFileName(like.title))
+		DownloadMP3FromURL(like)
+	# Remove temp.jpg
+	os.remove("temp.jpg")
 
 
-def DownloadMP3FromURL(url, name):
+def DownloadMP3FromURL(like):
+
+	url = like.URL
+	name = cleanFileName(like.title)
+
 	#Encode URL to be passed as argument in URL
 	encodedURL = urllib.quote_plus(url)
 
 	#Combine URLs to create download URL
 	downloadURL = CONST_SOUND_DL_URL + encodedURL
+
+	print(like.title.encode('utf-8', 'ignore'))
 
 	print("Preparing Stream...")
 
@@ -164,7 +177,65 @@ def DownloadMP3FromURL(url, name):
 	songFile.write(data.read())
 	songFile.close()
 
-	print("Download Complete\n")
+	print("Download Complete")
+
+	print("Updating MP3 File\n")
+
+	updateMP3Info(fileName, like)
+
+
+def updateMP3Info(fileName, like):
+
+	try:
+		meta = EasyID3(fileName)
+	except error:
+		meta = mutagen.File(fileName, easy=True)
+		meta.add_tags()
+
+	meta['title'] = like.title
+	meta['artist'] = like.user
+	meta.save()
+
+	if(like.artworkURL is not None):
+		addArtwork(fileName, like)
+	else:
+		print("Artwork Skipped")
+
+def addArtwork(fileName, like):
+	imageURL = like.artworkURL
+
+	largerImageURL = getLargerImage(imageURL)
+
+	urllib.urlretrieve(largerImageURL, "temp.jpg")
+
+	audio = MP3(fileName, ID3=ID3)
+
+	# add ID3 tag if it doesn't exist
+	try:
+	    audio.add_tags()
+	except error:
+	    pass
+
+	audio.tags.add(
+	    APIC(
+	        encoding=3, # 3 is for utf-8
+	        mime='image/jpeg', # image/jpeg or image/png
+	        type=3, # 3 is for the cover image
+	        desc=u'Cover',
+	        data=open('temp.jpg', 'rb').read()
+	    )
+	)
+	audio.save()
+
+def getLargerImage(imgURL):
+	if imgURL.endswith("large.jpg"):
+		imgURL = imgURL[:-9]
+		imgURL += "t500x500.jpg"
+	else:
+		print("\n\n\nUnknown Image URL suffix - Check\n\n\n")
+	return imgURL
+
+
 
 def cleanFileName(fileName):
 	valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
