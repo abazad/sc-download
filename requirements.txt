@@ -1,4 +1,7 @@
-fudge==1.0.3
-requests==2.5.0
+Django==1.7.1
+mechanize==0.2.5
+mutagen==1.27
+requests==2.5.1
 simplejson==3.6.5
 soundcloud==0.4.1
+virtualenv==1.11.6
