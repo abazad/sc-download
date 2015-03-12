@@ -9,6 +9,7 @@ import string
 import soundcloud
 import simplejson
 import os
+import ssl
 
 #	CONSTANTS	#
 
@@ -115,6 +116,8 @@ def AskToDownload(title):
 
 
 def DownloadLikeList():
+	open("temp.jpg", 'w').close()
+	#os.write(os.path.realpath(__file__), "temp.jpg").close
 	for like in likeList:
 		DownloadMP3FromURL(like)
 	# Remove temp.jpg
@@ -202,11 +205,20 @@ def updateMP3Info(fileName, like):
 		print("Artwork Skipped")
 
 def addArtwork(fileName, like):
+	# Clear temp.jpg file
+	open("temp.jpg", 'w').close()
+
 	imageURL = like.artworkURL
 
 	largerImageURL = getLargerImage(imageURL)
 
-	urllib.urlretrieve(largerImageURL, "temp.jpg")
+	try:
+		urllib.urlretrieve(largerImageURL, "temp.jpg")
+	except IOError as e:
+		print("Artwork Failed")
+		#print(e)
+		pass
+
 
 	audio = MP3(fileName, ID3=ID3)
 
